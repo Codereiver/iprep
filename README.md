@@ -284,38 +284,6 @@ Analysis results for google.com (domain):
     Technologies:
 ```
 
-## Recent Enhancements (2024)
-
-### Enhanced Domain Content Analysis
-
-The domain content analysis plugins have been significantly improved to provide detailed, actionable security intelligence:
-
-#### TLS-Analyser Improvements
-- **Certificate Details**: Displays actual CN (Common Name) and complete SAN (Subject Alternative Names) fields
-- **Expiry Tracking**: Shows precise days until certificate expiration with clear warnings
-- **Full Certificate Analysis**: No truncation of SAN lists - shows all Subject Alternative Names
-- **Example Output**: `"CN: *.google.com; SAN: *.google.com, *.appengine.google.com, ...; Expires in 40 days"`
-
-#### DNS-Analyser Improvements  
-- **Comprehensive DNS Records**: Displays A, AAAA, and MX record information with IP addresses
-- **Subdomain Discovery**: Detects and counts common subdomains (www, mail, api, admin, etc.)
-- **Infrastructure Analysis**: Identifies hosting providers and CDN usage patterns
-- **Example Output**: `"A: 142.250.117.102 (+5 more); AAAA: 2a00:1450:4009:c17::8b; MX: 1 record; Subdomains: 6"`
-
-#### WHOIS-Analyser Improvements
-- **Contact Information**: Extracts registrar, admin contacts, and tech contacts from WHOIS data
-- **Registration Intelligence**: Shows registrant organization, creation dates, and ownership details
-- **Privacy Detection**: Identifies when privacy protection services are in use
-- **Example Output**: `"Registrar: GoDaddy; Org: Example Corp; Admin: admin@example.com; Created: 2020-01-01"`
-
-#### Output Format Improvements
-- **Rich Information Display**: All analyzers now provide meaningful data instead of generic "N/A" responses
-- **No Title Truncation**: Removed artificial character limits to show complete information
-- **Consistent Formatting**: Standardized output formats across all domain content plugins
-- **Enhanced User Experience**: Clear, informative summaries that provide actionable security insights
-
-These improvements transform the tool from showing basic connectivity status to providing comprehensive domain security intelligence including certificate details, DNS infrastructure, and registration information.
-
 ## Privacy and Ethics
 
 ### Passive vs Active Analysis
@@ -331,11 +299,3 @@ These improvements transform the tool from showing basic connectivity status to 
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please:
-1. Follow the existing code style and plugin architecture
-2. Add comprehensive tests for new functionality
-3. Update documentation for any new features
-4. Ensure all security guidelines are followed for new plugins
