@@ -1,0 +1,345 @@
+"""
+Tests for reputation plugins.
+"""
+
+import pytest
+import json
+from unittest.mock import patch, MagicMock
+import requests
+from iprep.plugins.reputation.abuseipdb import AbuseIPDBPlugin
+from iprep.plugins.reputation.urlvoid import URLVoidPlugin
+
+
+class TestAbuseIPDBPlugin:
+    """Test cases for AbuseIPDBPlugin."""
+    
+    def test_initialization_without_api_key(self):
+        """Test plugin initialization without API key."""
+        plugin = AbuseIPDBPlugin()
+        
+        assert plugin.name == "AbuseIPDB"
+        assert plugin.timeout == 10
+        assert plugin.rate_limit_delay == 1.0
+        assert plugin.api_key is None
+        assert plugin.base_url == "https://api.abuseipdb.com/api/v2/check"
+    
+    def test_initialization_with_api_key(self):
+        """Test plugin initialization with API key."""
+        plugin = AbuseIPDBPlugin(api_key="test_key")
+        
+        assert plugin.api_key == "test_key"
+    
+    def test_mock_reputation_known_bad_ip(self):
+        """Test mock reputation for known bad IP."""
+        plugin = AbuseIPDBPlugin()
+        
+        result = plugin.get_reputation("1.2.3.4")
+        
+        assert result is not None
+        assert result['is_malicious'] is True
+        assert result['confidence_score'] == 0.95
+        assert result['abuse_confidence'] == 95.0
+        assert result['usage_type'] == 'datacenter'
+        assert result['total_reports'] == 15
+        assert 'Mock data' in result['note']
+    
+    def test_mock_reputation_clean_ip(self):
+        """Test mock reputation for clean IP."""
+        plugin = AbuseIPDBPlugin()
+        
+        result = plugin.get_reputation("192.168.1.1")
+        
+        assert result is not None
+        assert result['is_malicious'] is False
+        assert result['confidence_score'] == 0.10
+        assert result['usage_type'] == 'residential'
+        assert result['total_reports'] == 0
+    
+    def test_mock_reputation_unknown_ip(self):
+        """Test mock reputation for unknown IP."""
+        plugin = AbuseIPDBPlugin()
+        
+        result = plugin.get_reputation("8.8.8.8")
+        
+        assert result is not None
+        assert result['is_malicious'] is False
+        assert result['confidence_score'] == 0.05
+        assert result['abuse_confidence'] == 5
+        assert result['usage_type'] == 'residential'
+        assert result['total_reports'] == 0
+    
+    @patch('requests.get')
+    def test_api_successful_response(self, mock_get):
+        """Test successful API response with API key."""
+        plugin = AbuseIPDBPlugin(api_key="test_api_key")
+        
+        mock_response_data = {
+            "data": {
+                "ipAddress": "1.2.3.4",
+                "isPublic": True,
+                "ipVersion": 4,
+                "isWhitelisted": False,
+                "abuseConfidencePercentage": 75,
+                "countryCode": "US",
+                "usageType": "datacenter",
+                "isp": "Test ISP",
+                "domain": "test.com",
+                "totalReports": 10,
+                "numDistinctUsers": 5,
+                "lastReportedAt": "2024-01-15T10:30:00+00:00"
+            }
+        }
+        
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+        
+        result = plugin.get_reputation("1.2.3.4")
+        
+        assert result is not None
+        assert result['is_malicious'] is True
+        assert result['confidence_score'] == 0.75
+        assert result['abuse_confidence'] == 75
+        assert result['usage_type'] == 'datacenter'
+        assert result['isp'] == 'Test ISP'
+        assert result['domain'] == 'test.com'
+        assert result['country_code'] == 'US'
+        assert result['is_whitelisted'] is False
+        assert result['total_reports'] == 10
+        assert result['last_reported'] == "2024-01-15T10:30:00+00:00"
+    
+    @patch('requests.get')
+    def test_api_low_confidence_response(self, mock_get):
+        """Test API response with low confidence (clean IP)."""
+        plugin = AbuseIPDBPlugin(api_key="test_api_key")
+        
+        mock_response_data = {
+            "data": {
+                "ipAddress": "8.8.8.8",
+                "abuseConfidencePercentage": 10,
+                "totalReports": 1,
+                "isWhitelisted": False
+            }
+        }
+        
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+        
+        result = plugin.get_reputation("8.8.8.8")
+        
+        assert result is not None
+        assert result['is_malicious'] is False
+        assert result['confidence_score'] == 0.10
+    
+    @patch('urllib.request.urlopen')
+    def test_api_invalid_response(self, mock_urlopen):
+        """Test handling of invalid API response."""
+        plugin = AbuseIPDBPlugin(api_key="test_api_key")
+        
+        mock_response_data = {
+            "error": "Invalid API key"
+        }
+        
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(mock_response_data).encode('utf-8')
+        mock_response.__enter__.return_value = mock_response
+        mock_urlopen.return_value = mock_response
+        
+        result = plugin.get_reputation("1.2.3.4")
+        
+        assert result is None
+    
+    @patch('requests.get')
+    def test_api_network_error(self, mock_get):
+        """Test handling of network errors with API key."""
+        plugin = AbuseIPDBPlugin(api_key="test_api_key")
+        mock_get.side_effect = requests.exceptions.RequestException("Network error")
+        
+        with patch.object(plugin, '_handle_request_error') as mock_handle_error:
+            result = plugin.get_reputation("1.2.3.4")
+            
+            assert result is None
+            mock_handle_error.assert_called_once()
+    
+    def test_is_available(self):
+        """Test availability check."""
+        plugin = AbuseIPDBPlugin()
+        assert plugin.is_available() is True
+    
+    def test_check_ip_integration_mock(self):
+        """Test check_ip method integration with mock data."""
+        plugin = AbuseIPDBPlugin()
+        
+        result = plugin.check_ip("1.2.3.4")
+        
+        assert result is not None
+        assert result['source'] == 'AbuseIPDB'
+        assert result['ip_address'] == '1.2.3.4'
+        assert result['reputation']['is_malicious'] is True
+        assert result['reputation']['confidence_score'] == 0.95
+
+
+class TestURLVoidPlugin:
+    """Test cases for URLVoidPlugin."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.plugin = URLVoidPlugin()
+    
+    def test_initialization(self):
+        """Test plugin initialization."""
+        assert self.plugin.name == "URLVoid"
+        assert self.plugin.timeout == 10
+        assert self.plugin.rate_limit_delay == 1.5
+    
+    def test_deterministic_analysis(self):
+        """Test that analysis is deterministic for same IP."""
+        ip = "192.168.1.100"
+        
+        result1 = self.plugin.get_reputation(ip)
+        result2 = self.plugin.get_reputation(ip)
+        
+        assert result1 == result2
+    
+    def test_botnet_detection(self):
+        """Test detection of botnet IPs (hash % 10 == 0)."""
+        test_ips = ["192.168.1.1", "10.0.0.2", "172.16.0.3"]
+        
+        for ip in test_ips:
+            result = self.plugin.get_reputation(ip)
+            hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
+            
+            if hash_val % 10 == 0:
+                assert result['is_malicious'] is True
+                assert 'botnet' in result['threat_types']
+                assert result['confidence_score'] == 0.85
+                assert result['risk_level'] == 'high'
+            else:
+                assert 'botnet' not in result.get('threat_types', [])
+    
+    def test_malware_detection(self):
+        """Test detection of malware IPs (hash % 7 == 0)."""
+        test_ips = ["8.8.8.8", "1.1.1.1", "9.9.9.9"]
+        
+        for ip in test_ips:
+            result = self.plugin.get_reputation(ip)
+            hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
+            
+            if hash_val % 7 == 0 and hash_val % 10 != 0:
+                assert result['is_malicious'] is True
+                assert 'malware' in result['threat_types']
+                assert result['confidence_score'] == 0.75
+                assert result['risk_level'] == 'medium'
+    
+    def test_suspicious_activity_detection(self):
+        """Test detection of suspicious activity (hash % 5 == 0)."""
+        test_ips = ["203.0.113.5", "198.51.100.10"]
+        
+        for ip in test_ips:
+            result = self.plugin.get_reputation(ip)
+            hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
+            
+            if hash_val % 5 == 0 and hash_val % 7 != 0 and hash_val % 10 != 0:
+                assert 'suspicious_activity' in result['threat_types']
+                assert result['confidence_score'] == 0.45
+                assert result['risk_level'] == 'low'
+    
+    def test_scanning_detection(self):
+        """Test detection of scanning activity (hash % 3 == 0)."""
+        test_ips = ["10.1.1.3", "172.31.255.6"]
+        
+        for ip in test_ips:
+            result = self.plugin.get_reputation(ip)
+            hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
+            
+            if (hash_val % 3 == 0 and hash_val % 5 != 0 and 
+                hash_val % 7 != 0 and hash_val % 10 != 0):
+                assert 'scanning' in result['threat_types']
+                assert result['confidence_score'] == 0.30
+                assert result['risk_level'] == 'low'
+    
+    def test_clean_ip(self):
+        """Test analysis of clean IP (no threat indicators)."""
+        ip = "127.0.0.1"
+        result = self.plugin.get_reputation(ip)
+        hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
+        
+        if (hash_val % 3 != 0 and hash_val % 5 != 0 and 
+            hash_val % 7 != 0 and hash_val % 10 != 0):
+            assert result['is_malicious'] is False
+            assert result['threat_types'] == []
+            assert result['confidence_score'] == 0.1
+            assert result['risk_level'] == 'minimal'
+    
+    def test_engines_calculation(self):
+        """Test engines total and detection calculation."""
+        ip = "192.0.2.1"
+        result = self.plugin.get_reputation(ip)
+        
+        assert 'engines_total' in result
+        assert 'engines_detected' in result
+        assert 'detection_ratio' in result
+        assert result['engines_total'] >= 5
+        assert result['engines_total'] <= 19
+        assert result['engines_detected'] >= 0
+        assert result['engines_detected'] <= result['engines_total']
+        assert "/" in result['detection_ratio']
+    
+    def test_risk_level_calculation(self):
+        """Test risk level calculation logic."""
+        test_cases = [
+            (0.9, 'high'),
+            (0.8, 'high'),
+            (0.7, 'medium'),
+            (0.5, 'medium'),
+            (0.4, 'low'),
+            (0.3, 'low'),
+            (0.2, 'minimal'),
+            (0.1, 'minimal')
+        ]
+        
+        for confidence, expected_risk in test_cases:
+            risk = self.plugin._calculate_risk_level(confidence)
+            assert risk == expected_risk
+    
+    def test_metadata_fields(self):
+        """Test presence of required metadata fields."""
+        result = self.plugin.get_reputation("203.0.113.100")
+        
+        required_fields = [
+            'is_malicious', 'confidence_score', 'threat_types',
+            'engines_total', 'engines_detected', 'detection_ratio',
+            'risk_level', 'last_analysis', 'note'
+        ]
+        
+        for field in required_fields:
+            assert field in result, f"Missing required field: {field}"
+    
+    def test_rate_limiting(self):
+        """Test that rate limiting is enforced."""
+        with patch.object(self.plugin, '_enforce_rate_limit') as mock_rate_limit:
+            self.plugin.get_reputation("8.8.8.8")
+            mock_rate_limit.assert_called_once()
+    
+    def test_error_handling(self):
+        """Test error handling in analysis."""
+        with patch.object(self.plugin, '_analyze_ip_reputation', side_effect=Exception("Test error")):
+            with patch.object(self.plugin, '_handle_request_error') as mock_handle_error:
+                result = self.plugin.get_reputation("1.1.1.1")
+                
+                assert result is None
+                mock_handle_error.assert_called_once()
+    
+    def test_check_ip_integration(self):
+        """Test check_ip method integration."""
+        result = self.plugin.check_ip("198.51.100.200")
+        
+        assert result is not None
+        assert result['source'] == 'URLVoid'
+        assert result['ip_address'] == '198.51.100.200'
+        assert 'reputation' in result
+        assert 'confidence_score' in result['reputation']
+        assert 'threat_types' in result['reputation']
