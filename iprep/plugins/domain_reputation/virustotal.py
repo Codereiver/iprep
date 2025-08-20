@@ -36,7 +36,11 @@ class VirusTotalDomainPlugin(DomainReputationPlugin):
             Domain reputation data dictionary or None if not available
         """
         if not self.api_key:
-            return self._get_mock_domain_reputation(domain)
+            return {
+                'error': 'API key not configured',
+                'message': 'VirusTotal requires an API key. Set IPREP_VIRUSTOTAL_API_KEY environment variable.',
+                'plugin': 'VirusTotal-Domain'
+            }
         
         self._enforce_rate_limit()
         
@@ -54,85 +58,11 @@ class VirusTotalDomainPlugin(DomainReputationPlugin):
             
         except Exception as e:
             self._handle_request_error(e, domain)
-            return self._get_mock_domain_reputation(domain)
+            return None
     
-    def _get_mock_domain_reputation(self, domain: str) -> Dict[str, Any]:
-        """
-        Provide mock VirusTotal-style domain reputation data.
-        
-        Args:
-            domain: The domain name to analyze
-            
-        Returns:
-            Mock domain reputation analysis results
-        """
-        domain_hash = int(hashlib.md5(domain.encode()).hexdigest()[:8], 16)
-        
-        # Generate mock engines and detections
-        total_engines = 70  # VirusTotal typically has ~70 engines
-        detection_rate = self._calculate_detection_rate(domain_hash)
-        detections = int(total_engines * detection_rate)
-        
-        threat_types = []
-        categories = []
-        
-        # Determine threat types based on detection rate
-        if detection_rate > 0.7:
-            threat_types.extend(['malware', 'phishing'])
-            categories.extend(['malicious', 'phishing'])
-        elif detection_rate > 0.4:
-            threat_types.append('suspicious')
-            categories.append('suspicious')
-        elif detection_rate > 0.1:
-            threat_types.append('potentially-unwanted')
-            categories.append('potentially-harmful')
-        else:
-            categories.append('harmless')
-        
-        # Mock additional VirusTotal-style data
-        sample_vendors = [
-            'Kaspersky', 'Bitdefender', 'Avira', 'ESET-NOD32', 'F-Secure',
-            'McAfee', 'Symantec', 'Sophos', 'Trend Micro', 'Panda'
-        ]
-        
-        detecting_vendors = []
-        if detections > 0:
-            # Select some vendors that "detected" the domain
-            vendor_count = min(detections, len(sample_vendors))
-            step = len(sample_vendors) // max(vendor_count, 1)
-            detecting_vendors = sample_vendors[::step][:vendor_count]
-        
-        return {
-            'is_malicious': detection_rate > 0.3,
-            'confidence_score': min(detection_rate * 1.2, 1.0),
-            'threat_types': threat_types,
-            'categories': categories,
-            'engines_total': total_engines,
-            'engines_detected': detections,
-            'detection_ratio': f"{detections}/{total_engines}",
-            'detecting_vendors': detecting_vendors,
-            'scan_date': '2024-01-15T14:30:00Z',
-            'last_seen': '2024-01-15T10:30:00Z',
-            'reputation_score': int((1 - detection_rate) * 100),
-            'harmless_votes': max(0, 50 - detections),
-            'malicious_votes': detections,
-            'note': 'Simulated VirusTotal-style domain reputation data'
-        }
-    
-    def _calculate_detection_rate(self, domain_hash: int) -> float:
-        """Calculate mock detection rate based on domain hash."""
-        # Create deterministic but varied detection rates
-        base_rate = (domain_hash % 100) / 100.0
-        
-        # Apply some logic to make certain patterns more/less suspicious
-        if domain_hash % 15 == 0:  # Simulate known bad domains
-            return min(0.8 + (base_rate * 0.2), 1.0)
-        elif domain_hash % 7 == 0:  # Simulate suspicious domains
-            return min(0.4 + (base_rate * 0.4), 0.7)
-        elif domain_hash % 3 == 0:  # Simulate potentially unwanted
-            return min(0.1 + (base_rate * 0.3), 0.4)
-        else:  # Mostly clean domains
-            return min(base_rate * 0.2, 0.15)
+    def is_available(self) -> bool:
+        """Check if the plugin is available (requires API key)."""
+        return bool(self.api_key)
     
     def _parse_virustotal_response(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Parse real VirusTotal API response (when API key is available)."""

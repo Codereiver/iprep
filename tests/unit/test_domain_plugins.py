@@ -18,57 +18,45 @@ class TestURLVoidDomainPlugin:
         plugin = URLVoidDomainPlugin()
         assert plugin.name == "URLVoid-Domain"
         assert plugin.api_key is None
-        assert plugin.is_available()
+        assert not plugin.is_available()  # Should be False without API key
     
     def test_initialization_with_api_key(self):
         """Test plugin initialization with API key."""
         plugin = URLVoidDomainPlugin(api_key="test_key")
         assert plugin.api_key == "test_key"
     
-    def test_mock_reputation_legitimate_domain(self):
-        """Test mock reputation for legitimate domain."""
+    def test_no_api_key_returns_error(self):
+        """Test that plugin returns error without API key."""
         plugin = URLVoidDomainPlugin()
         result = plugin.get_domain_reputation("google.com")
         
         assert result is not None
-        assert 'is_malicious' in result
-        assert 'confidence_score' in result
-        assert 'threat_types' in result
-        assert 'categories' in result
-        assert 'note' in result
-        assert result['note'] == 'Simulated domain reputation data for demonstration'
+        assert 'error' in result
+        assert result['error'] == 'API key not configured'
+        assert 'IPREP_URLVOID_API_KEY' in result['message']
+        assert result['plugin'] == 'URLVoid-Domain'
     
-    def test_mock_reputation_deterministic(self):
-        """Test that mock reputation is deterministic."""
+    def test_consistent_error_without_api_key(self):
+        """Test that plugin returns consistent error for any domain without API key."""
         plugin = URLVoidDomainPlugin()
         
-        # Same domain should return same results
-        result1 = plugin.get_domain_reputation("example.com")
-        result2 = plugin.get_domain_reputation("example.com")
-        
-        assert result1 == result2
+        domains = ["example.com", "google.com", "test.org"]
+        for domain in domains:
+            result = plugin.get_domain_reputation(domain)
+            assert result is not None
+            assert 'error' in result
+            assert result['error'] == 'API key not configured'
     
-    def test_mock_reputation_various_domains(self):
-        """Test mock reputation for various domains to ensure variety."""
-        plugin = URLVoidDomainPlugin()
-        domains = ["test1.com", "test2.com", "test3.com", "test4.com"]
-        results = [plugin.get_domain_reputation(domain) for domain in domains]
-        
-        # Should have some variation in results
-        malicious_flags = [r['is_malicious'] for r in results]
-        confidence_scores = [r['confidence_score'] for r in results]
-        
-        # Not all results should be identical
-        assert len(set(malicious_flags)) > 1 or len(set(confidence_scores)) > 1
+    def test_availability_with_api_key(self):
+        """Test plugin availability with API key."""
+        plugin = URLVoidDomainPlugin(api_key="test_api_key_123456")
+        assert plugin.is_available() is True
     
-    def test_calculate_risk_level(self):
-        """Test risk level calculation."""
-        plugin = URLVoidDomainPlugin()
-        
-        assert plugin._calculate_risk_level(0.9) == 'high'
-        assert plugin._calculate_risk_level(0.7) == 'medium'
-        assert plugin._calculate_risk_level(0.4) == 'low'
-        assert plugin._calculate_risk_level(0.1) == 'minimal'
+    def test_initialization_with_api_key(self):
+        """Test plugin initialization with API key."""
+        plugin = URLVoidDomainPlugin(api_key="test_api_key_123456")
+        assert plugin.api_key == "test_api_key_123456"
+        assert plugin.is_available() is True
 
 
 class TestVirusTotalDomainPlugin:
@@ -79,64 +67,39 @@ class TestVirusTotalDomainPlugin:
         plugin = VirusTotalDomainPlugin()
         assert plugin.name == "VirusTotal-Domain"
         assert plugin.api_key is None
-        assert plugin.is_available()
+        assert not plugin.is_available()  # Should be False without API key
     
     def test_initialization_with_api_key(self):
         """Test plugin initialization with API key."""
         plugin = VirusTotalDomainPlugin(api_key="test_key")
         assert plugin.api_key == "test_key"
     
-    def test_mock_reputation_structure(self):
-        """Test mock reputation data structure."""
+    def test_no_api_key_returns_error(self):
+        """Test that plugin returns error without API key."""
         plugin = VirusTotalDomainPlugin()
         result = plugin.get_domain_reputation("example.com")
         
-        expected_keys = [
-            'is_malicious', 'confidence_score', 'threat_types', 'categories',
-            'engines_total', 'engines_detected', 'detection_ratio',
-            'detecting_vendors', 'scan_date', 'reputation_score',
-            'harmless_votes', 'malicious_votes', 'note'
-        ]
-        
-        for key in expected_keys:
-            assert key in result, f"Missing key: {key}"
+        assert result is not None
+        assert 'error' in result
+        assert result['error'] == 'API key not configured'
+        assert 'IPREP_VIRUSTOTAL_API_KEY' in result['message']
+        assert result['plugin'] == 'VirusTotal-Domain'
     
-    def test_detection_rate_calculation(self):
-        """Test detection rate calculation logic."""
+    def test_availability_with_api_key(self):
+        """Test plugin availability with API key."""
+        plugin = VirusTotalDomainPlugin(api_key="test_api_key_123456789012345678901234")
+        assert plugin.is_available() is True
+    
+    def test_consistent_error_without_api_key(self):
+        """Test that plugin returns consistent error for any domain without API key."""
         plugin = VirusTotalDomainPlugin()
         
-        # Test different hash values to verify rate calculation logic
-        test_domains = [
-            "malicious-test.com",  # Should potentially trigger high detection
-            "clean-test.com",      # Should potentially be clean
-            "suspicious-test.com"  # Should potentially be suspicious
-        ]
-        
-        results = [plugin.get_domain_reputation(domain) for domain in test_domains]
-        
-        # Verify all results have valid detection ratios
-        for result in results:
-            engines_total = result['engines_total']
-            engines_detected = result['engines_detected']
-            assert 0 <= engines_detected <= engines_total
-            assert engines_total > 0
-    
-    def test_threat_type_logic(self):
-        """Test threat type assignment logic."""
-        plugin = VirusTotalDomainPlugin()
-        
-        # Test many domains to see variety in threat types
-        domains = [f"test{i}.com" for i in range(20)]
-        results = [plugin.get_domain_reputation(domain) for domain in domains]
-        
-        # Collect all threat types seen
-        all_threat_types = set()
-        for result in results:
-            all_threat_types.update(result['threat_types'])
-        
-        # Should see some variety in threat types
-        possible_types = ['malware', 'phishing', 'suspicious', 'potentially-unwanted']
-        assert len(all_threat_types.intersection(possible_types)) > 0
+        domains = ["example.com", "google.com", "test.org"]
+        for domain in domains:
+            result = plugin.get_domain_reputation(domain)
+            assert result is not None
+            assert 'error' in result
+            assert result['error'] == 'API key not configured'
 
 
 class TestHTTPAnalyserPlugin:

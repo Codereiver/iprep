@@ -44,7 +44,11 @@ class AbuseIPDBPlugin(ReputationPlugin):
             Reputation data dictionary or None if not available
         """
         if not self.api_key:
-            return self._get_mock_reputation(ip_address)
+            return {
+                'error': 'API key not configured',
+                'message': 'AbuseIPDB requires an API key. Set IPREP_ABUSEIPDB_API_KEY environment variable.',
+                'plugin': 'AbuseIPDB'
+            }
         
         self._enforce_rate_limit()
         
@@ -91,44 +95,6 @@ class AbuseIPDBPlugin(ReputationPlugin):
             self._handle_request_error(e, ip_address)
             return None
     
-    def _get_mock_reputation(self, ip_address: str) -> Optional[Dict[str, Any]]:
-        """
-        Provide mock reputation data when no API key is available.
-        
-        Args:
-            ip_address: The IP address to check
-            
-        Returns:
-            Mock reputation data for demonstration
-        """
-        known_bad_ips = {
-            '1.2.3.4': {'malicious': True, 'confidence': 0.95},
-            '5.6.7.8': {'malicious': True, 'confidence': 0.80},
-            '192.168.1.1': {'malicious': False, 'confidence': 0.10}
-        }
-        
-        if ip_address in known_bad_ips:
-            mock_data = known_bad_ips[ip_address]
-            return {
-                'is_malicious': mock_data['malicious'],
-                'confidence_score': mock_data['confidence'],
-                'abuse_confidence': mock_data['confidence'] * 100,
-                'usage_type': 'datacenter' if mock_data['malicious'] else 'residential',
-                'total_reports': 15 if mock_data['malicious'] else 0,
-                'is_whitelisted': False,
-                'note': 'Mock data - no API key provided'
-            }
-        
-        return {
-            'is_malicious': False,
-            'confidence_score': 0.05,
-            'abuse_confidence': 5,
-            'usage_type': 'residential',
-            'total_reports': 0,
-            'is_whitelisted': False,
-            'note': 'Mock data - no API key provided'
-        }
-    
     def is_available(self) -> bool:
-        """Check if the plugin is available (always true for mock mode)."""
-        return True
+        """Check if the plugin is available (requires API key)."""
+        return bool(self.api_key)

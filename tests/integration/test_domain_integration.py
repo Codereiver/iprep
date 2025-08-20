@@ -286,13 +286,13 @@ class TestDomainPluginDiscovery:
             agent = IPRepAgent()
         
         # Check that domain plugins were loaded successfully
-        # We can see from the captured output that 4 domain plugins loaded
+        # Note: URLVoid and VirusTotal require API keys so won't be loaded without them
         total_domain_plugins = len(agent.domain_reputation_plugins) + len(agent.domain_content_plugins)
         
-        # Should have loaded domain plugins from the real plugin modules
-        assert total_domain_plugins >= 4  # 2 reputation + 2 content plugins
-        assert len(agent.domain_reputation_plugins) >= 2  # URLVoid, VirusTotal
-        assert len(agent.domain_content_plugins) >= 2  # DNS, HTTP analyzers
+        # Should have loaded available domain plugins from the real plugin modules
+        assert total_domain_plugins >= 5  # At least PhishTank + 4 content plugins
+        assert len(agent.domain_reputation_plugins) >= 1  # PhishTank (free)
+        assert len(agent.domain_content_plugins) >= 4  # DNS, HTTP, TLS, WHOIS analyzers
 
 
 class TestRealDomainPlugins:

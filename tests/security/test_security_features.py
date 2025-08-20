@@ -368,5 +368,11 @@ class TestSecurityConfiguration:
         plugin = AbuseIPDBPlugin()
         assert plugin.api_key is None
         
-        # Should still be available (will use mock data)
-        assert plugin.is_available()
+        # Should NOT be available without API key (no longer provides mock data)
+        assert not plugin.is_available()
+        
+        # Should return error message when used without API key
+        result = plugin.get_reputation("8.8.8.8")
+        assert result is not None
+        assert 'error' in result
+        assert result['error'] == 'API key not configured'

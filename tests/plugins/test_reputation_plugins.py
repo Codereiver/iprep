@@ -29,49 +29,41 @@ class TestAbuseIPDBPlugin:
         
         assert plugin.api_key == "test_key"
     
-    def test_mock_reputation_known_bad_ip(self):
-        """Test mock reputation for known bad IP."""
+    def test_no_api_key_returns_error(self):
+        """Test that plugin returns error when no API key is provided."""
         plugin = AbuseIPDBPlugin()
         
         result = plugin.get_reputation("1.2.3.4")
         
         assert result is not None
-        assert result['is_malicious'] is True
-        assert result['confidence_score'] == 0.95
-        assert result['abuse_confidence'] == 95.0
-        assert result['usage_type'] == 'datacenter'
-        assert result['total_reports'] == 15
-        assert 'Mock data' in result['note']
+        assert 'error' in result
+        assert result['error'] == 'API key not configured'
+        assert 'IPREP_ABUSEIPDB_API_KEY' in result['message']
+        assert result['plugin'] == 'AbuseIPDB'
     
-    def test_mock_reputation_clean_ip(self):
-        """Test mock reputation for clean IP."""
+    def test_no_api_key_consistent_error(self):
+        """Test that plugin returns consistent error for any IP without API key."""
         plugin = AbuseIPDBPlugin()
         
-        result = plugin.get_reputation("192.168.1.1")
-        
-        assert result is not None
-        assert result['is_malicious'] is False
-        assert result['confidence_score'] == 0.10
-        assert result['usage_type'] == 'residential'
-        assert result['total_reports'] == 0
+        # Test different IPs all return same error
+        ips = ["192.168.1.1", "8.8.8.8", "1.1.1.1"]
+        for ip in ips:
+            result = plugin.get_reputation(ip)
+            assert result is not None
+            assert 'error' in result
+            assert result['error'] == 'API key not configured'
+            assert 'IPREP_ABUSEIPDB_API_KEY' in result['message']
     
-    def test_mock_reputation_unknown_ip(self):
-        """Test mock reputation for unknown IP."""
+    def test_is_available_without_api_key(self):
+        """Test that plugin is not available without API key."""
         plugin = AbuseIPDBPlugin()
-        
-        result = plugin.get_reputation("8.8.8.8")
-        
-        assert result is not None
-        assert result['is_malicious'] is False
-        assert result['confidence_score'] == 0.05
-        assert result['abuse_confidence'] == 5
-        assert result['usage_type'] == 'residential'
-        assert result['total_reports'] == 0
+        assert plugin.is_available() is False
     
     @patch('requests.get')
     def test_api_successful_response(self, mock_get):
         """Test successful API response with API key."""
-        plugin = AbuseIPDBPlugin(api_key="test_api_key")
+        # Use a valid-length API key
+        plugin = AbuseIPDBPlugin(api_key="test123456789012345678901234567890")
         
         mock_response_data = {
             "data": {
@@ -112,7 +104,7 @@ class TestAbuseIPDBPlugin:
     @patch('requests.get')
     def test_api_low_confidence_response(self, mock_get):
         """Test API response with low confidence (clean IP)."""
-        plugin = AbuseIPDBPlugin(api_key="test_api_key")
+        plugin = AbuseIPDBPlugin(api_key="test123456789012345678901234567890")
         
         mock_response_data = {
             "data": {
@@ -137,7 +129,7 @@ class TestAbuseIPDBPlugin:
     @patch('urllib.request.urlopen')
     def test_api_invalid_response(self, mock_urlopen):
         """Test handling of invalid API response."""
-        plugin = AbuseIPDBPlugin(api_key="test_api_key")
+        plugin = AbuseIPDBPlugin(api_key="test123456789012345678901234567890")
         
         mock_response_data = {
             "error": "Invalid API key"
@@ -155,7 +147,7 @@ class TestAbuseIPDBPlugin:
     @patch('requests.get')
     def test_api_network_error(self, mock_get):
         """Test handling of network errors with API key."""
-        plugin = AbuseIPDBPlugin(api_key="test_api_key")
+        plugin = AbuseIPDBPlugin(api_key="test123456789012345678901234567890")
         mock_get.side_effect = requests.exceptions.RequestException("Network error")
         
         with patch.object(plugin, '_handle_request_error') as mock_handle_error:
@@ -164,13 +156,13 @@ class TestAbuseIPDBPlugin:
             assert result is None
             mock_handle_error.assert_called_once()
     
-    def test_is_available(self):
-        """Test availability check."""
-        plugin = AbuseIPDBPlugin()
+    def test_is_available_with_api_key(self):
+        """Test availability check with API key."""
+        plugin = AbuseIPDBPlugin(api_key="test123456789012345678901234567890")
         assert plugin.is_available() is True
     
     def test_check_ip_integration_mock(self):
-        """Test check_ip method integration with mock data."""
+        """Test check_ip method returns error without API key."""
         plugin = AbuseIPDBPlugin()
         
         result = plugin.check_ip("1.2.3.4")
@@ -178,8 +170,8 @@ class TestAbuseIPDBPlugin:
         assert result is not None
         assert result['source'] == 'AbuseIPDB'
         assert result['ip_address'] == '1.2.3.4'
-        assert result['reputation']['is_malicious'] is True
-        assert result['reputation']['confidence_score'] == 0.95
+        assert 'error' in result['reputation']
+        assert result['reputation']['error'] == 'API key not configured'
 
 
 class TestURLVoidPlugin:

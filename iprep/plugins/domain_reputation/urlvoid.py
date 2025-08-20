@@ -31,7 +31,11 @@ class URLVoidDomainPlugin(DomainReputationPlugin):
             Domain reputation data dictionary or None if not available
         """
         if not self.api_key:
-            return self._get_mock_domain_reputation(domain)
+            return {
+                'error': 'API key not configured',
+                'message': 'URLVoid requires an API key. Set IPREP_URLVOID_API_KEY environment variable.',
+                'plugin': 'URLVoid-Domain'
+            }
         
         self._enforce_rate_limit()
         
@@ -47,73 +51,11 @@ class URLVoidDomainPlugin(DomainReputationPlugin):
             
         except Exception as e:
             self._handle_request_error(e, domain)
-            return self._get_mock_domain_reputation(domain)
+            return None
     
-    def _get_mock_domain_reputation(self, domain: str) -> Dict[str, Any]:
-        """
-        Provide mock domain reputation data for demonstration.
-        
-        Args:
-            domain: The domain name to analyze
-            
-        Returns:
-            Mock domain reputation analysis results
-        """
-        domain_hash = int(hashlib.md5(domain.encode()).hexdigest()[:8], 16)
-        
-        threat_types = []
-        categories = []
-        is_malicious = False
-        confidence = 0.1
-        
-        # Deterministic "analysis" based on domain hash
-        if domain_hash % 12 == 0:
-            threat_types.extend(['phishing', 'credential-theft'])
-            categories.append('malicious')
-            is_malicious = True
-            confidence = 0.9
-        elif domain_hash % 8 == 0:
-            threat_types.append('malware')
-            categories.append('malicious')
-            is_malicious = True
-            confidence = 0.85
-        elif domain_hash % 6 == 0:
-            threat_types.append('spam')
-            categories.append('suspicious')
-            confidence = 0.6
-        elif domain_hash % 4 == 0:
-            categories.append('newly-registered')
-            confidence = 0.3
-        else:
-            categories.append('legitimate')
-        
-        engines_count = (domain_hash % 20) + 10
-        detections = max(0, int(engines_count * (confidence - 0.1)))
-        
-        # Mock WHOIS-style data
-        mock_dates = [
-            '2020-01-15',
-            '2021-06-20',
-            '2022-11-30',
-            '2023-03-10'
-        ]
-        creation_date = mock_dates[domain_hash % len(mock_dates)]
-        
-        return {
-            'is_malicious': is_malicious,
-            'confidence_score': confidence,
-            'threat_types': threat_types,
-            'categories': categories,
-            'engines_total': engines_count,
-            'engines_detected': detections,
-            'detection_ratio': f"{detections}/{engines_count}",
-            'registrar': 'Mock Registrar Inc.',
-            'creation_date': creation_date,
-            'expiration_date': '2025-12-31',
-            'last_seen': '2024-01-15T10:30:00Z',
-            'risk_level': self._calculate_risk_level(confidence),
-            'note': 'Simulated domain reputation data for demonstration'
-        }
+    def is_available(self) -> bool:
+        """Check if the plugin is available (requires API key)."""
+        return bool(self.api_key)
     
     def _parse_urlvoid_response(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Parse real URLVoid API response (when API key is available)."""
