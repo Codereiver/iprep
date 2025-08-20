@@ -84,6 +84,26 @@ domain_results = agent.analyze_domain("example.com")
 results = agent.analyze_input("example.com")
 ```
 
+## Quick Start - Plugins at a Glance
+
+| Plugin | Type | API Key | Get Key URL |
+|--------|------|---------|-------------|
+| **Works Without Configuration** ||||
+| IP-API | Passive | 🟢 None needed | - |
+| IPinfo | Passive | 🟢 Optional | [ipinfo.io/signup](https://ipinfo.io/signup) |
+| GreyNoise | Passive | 🟢 Optional | [greynoise.io](https://www.greynoise.io/viz/signup) |
+| PhishTank | Passive | 🟢 Optional | [phishtank.org](https://www.phishtank.org/api_info.php) |
+| DNS-Analyser | Active | 🟢 None needed | - |
+| HTTP-Analyser | Active | 🟢 None needed | - |
+| TLS-Analyser | Active | 🟢 None needed | - |
+| WHOIS-Analyser | Active | 🟢 None needed | - |
+| **Requires API Key** ||||
+| AbuseIPDB | Passive | 🔴 Required | [abuseipdb.com](https://www.abuseipdb.com/register) |
+| URLVoid* | Passive | 🔴 Required | [urlvoid.com](https://www.urlvoid.com/api/) |
+| VirusTotal* | Passive | 🔴 Required | [virustotal.com](https://www.virustotal.com/gui/join-us) |
+
+*Not yet implemented - requires API integration
+
 ## Available Plugins
 
 The tool includes 12 specialized plugins organized by traffic type and analysis focus:
@@ -92,23 +112,60 @@ The tool includes 12 specialized plugins organized by traffic type and analysis 
 
 #### IP Geolocation & Reputation
 - **IP-API** - Free IP geolocation service providing country, region, city, ISP, and ASN information
+  - 🟢 **No API key required** - Works out of the box
+  - Rate limit: 45 requests per minute
+
 - **IPinfo** - IP geolocation and network details with comprehensive geographic and organizational data
+  - 🟢 **No API key required** - Works out of the box (free tier: 50k requests/month)
+  - 🔑 Optional API key for higher limits: [Get key at ipinfo.io](https://ipinfo.io/signup)
+
 - **AbuseIPDB** - Community-driven IP abuse database for identifying malicious IP addresses
+  - 🔴 **API key required** - [Get free key at abuseipdb.com](https://www.abuseipdb.com/register)
+  - Free tier: 1,000 requests per day
+  - Set key: `export IPREP_ABUSEIPDB_API_KEY="your-key"`
+
 - **GreyNoise** - Internet background noise detection to distinguish scanning traffic from targeted attacks
-- **URLVoid** - Multi-engine IP reputation checker aggregating data from various security vendors
+  - 🟢 **No API key required** - Community API works without authentication
+  - 🔑 Optional API key for enhanced data: [Get key at greynoise.io](https://www.greynoise.io/viz/signup)
+  - Set key: `export IPREP_GREYNOISE_API_KEY="your-key"`
+
+- **URLVoid** - IP reputation checker (currently not implemented)
+  - 🔴 **API key required** - [Get key at urlvoid.com](https://www.urlvoid.com/api/)
+  - Note: This plugin is not currently functional - requires implementation
 
 #### Domain Reputation  
 - **PhishTank** - Community-driven phishing detection service for identifying malicious domains and URLs
-- **URLVoid-Domain** - Domain reputation analysis using multiple security engines and threat feeds
-- **VirusTotal-Domain** - Domain analysis using VirusTotal's comprehensive threat intelligence database
+  - 🟢 **No API key required** - Works out of the box
+  - 🔑 Optional API key for higher rate limits: [Get key at phishtank.org](https://www.phishtank.org/api_info.php)
+  - Set key: `export IPREP_PHISHTANK_API_KEY="your-key"`
+
+- **URLVoid-Domain** - Domain reputation analysis (currently not implemented)
+  - 🔴 **API key required** - [Get key at urlvoid.com](https://www.urlvoid.com/api/)
+  - Note: This plugin is not currently functional - requires implementation
+
+- **VirusTotal-Domain** - Domain analysis (currently not implemented)
+  - 🔴 **API key required** - [Get free key at virustotal.com](https://www.virustotal.com/gui/join-us)
+  - Note: This plugin is not currently functional - requires implementation
+  - Set key: `export IPREP_VIRUSTOTAL_API_KEY="your-key"`
 
 ### Active Plugins (Directly Contact Targets)
 
 #### Domain Content & Infrastructure Analysis
 - **DNS-Analyser** - Comprehensive DNS record analysis including A, AAAA, MX, CNAME records, subdomain detection, and hosting provider identification
+  - 🟢 **No API key required** - Uses system DNS resolution
+  - Directly queries DNS servers for target domain
+
 - **HTTP-Analyser** - Website content analysis including title extraction, technology detection, and security headers
+  - 🟢 **No API key required** - Direct HTTP/HTTPS requests to target
+  - Analyzes response headers, HTML content, and security configuration
+
 - **TLS-Analyser** - SSL/TLS certificate analysis with CN/SAN field extraction, expiry tracking, cipher suites, and comprehensive certificate examination (bypasses validation to analyse any presented certificate)
+  - 🟢 **No API key required** - Direct TLS connection to target
+  - Examines certificates even if expired or self-signed
+
 - **WHOIS-Analyser** - Domain registration information including registrar, admin/tech contacts, creation dates, nameservers, and ownership details
+  - 🟢 **No API key required** - Direct WHOIS protocol queries
+  - Contacts appropriate WHOIS servers based on TLD
 
 ## Architecture
 
@@ -147,18 +204,45 @@ The project follows a security-focused, modular plugin-based architecture:
 
 ## Configuration
 
-### API Keys (Optional)
-Some plugins support API keys for enhanced functionality:
+### API Keys
+
+Some plugins require API keys while others work without configuration:
+
+#### Required API Keys
+These plugins will not function without an API key:
 
 ```bash
-# GreyNoise (optional - free tier available)
-export IPREP_GREYNOISE_API_KEY="your-api-key"
-
-# AbuseIPDB (optional for higher rate limits)
+# AbuseIPDB - IP reputation database (required)
+# Get free key at: https://www.abuseipdb.com/register
 export IPREP_ABUSEIPDB_API_KEY="your-api-key"
 
-# PhishTank (optional for higher rate limits)
+# URLVoid - Multi-engine reputation checker (required - not yet implemented)
+# Get key at: https://www.urlvoid.com/api/
+export IPREP_URLVOID_API_KEY="your-api-key"
+
+# VirusTotal - Threat intelligence (required - not yet implemented)  
+# Get free key at: https://www.virustotal.com/gui/join-us
+export IPREP_VIRUSTOTAL_API_KEY="your-api-key"
+```
+
+#### Optional API Keys
+These plugins work without keys but offer enhanced features with authentication:
+
+```bash
+# GreyNoise - Enhanced threat data (optional)
+# Community API works without key, paid tier offers more data
+# Get key at: https://www.greynoise.io/viz/signup
+export IPREP_GREYNOISE_API_KEY="your-api-key"
+
+# PhishTank - Higher rate limits (optional)
+# Works without key, API key increases rate limits
+# Get key at: https://www.phishtank.org/api_info.php
 export IPREP_PHISHTANK_API_KEY="your-api-key"
+
+# IPinfo - Higher rate limits (optional)
+# Free tier: 50k requests/month without key
+# Get key at: https://ipinfo.io/signup
+export IPREP_IPINFO_API_KEY="your-api-key"
 ```
 
 ### Plugin Control

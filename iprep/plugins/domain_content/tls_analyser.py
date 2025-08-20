@@ -9,7 +9,6 @@ whatever certificate is presented, regardless of validity.
 
 import ssl
 import socket
-import hashlib
 import datetime
 from typing import Dict, Any, Optional, List
 from urllib.parse import urlparse
@@ -60,7 +59,7 @@ class TLSAnalyserPlugin(DomainContentPlugin):
                     continue
             
             if not cert_data:
-                return self._get_mock_tls_analysis(domain)
+                return None
             
             # Analyse the certificate and connection
             analysis = self._analyze_certificate(cert_data, domain)
@@ -70,7 +69,7 @@ class TLSAnalyserPlugin(DomainContentPlugin):
             
         except Exception as e:
             self._handle_request_error(e, domain)
-            return self._get_mock_tls_analysis(domain)
+            return None
     
     def _get_certificate_info(self, domain: str, port: int = 443) -> tuple:
         """
@@ -523,70 +522,3 @@ class TLSAnalyserPlugin(DomainContentPlugin):
                 'note': f'DER parsing failed: {str(e)}'
             }
 
-    def _get_mock_tls_analysis(self, domain: str) -> Dict[str, Any]:
-        """
-        Provide mock TLS analysis when connection fails.
-        
-        Args:
-            domain: The domain being analysed
-            
-        Returns:
-            Mock TLS analysis data
-        """
-        domain_hash = int(hashlib.md5(domain.encode()).hexdigest()[:8], 16)
-        
-        # Generate deterministic mock data
-        protocols = ['TLSv1.2', 'TLSv1.3', 'TLSv1.1']
-        protocol = protocols[domain_hash % len(protocols)]
-        
-        cipher_suites = [
-            'ECDHE-RSA-AES256-GCM-SHA384',
-            'ECDHE-RSA-AES128-GCM-SHA256',
-            'DHE-RSA-AES256-SHA256'
-        ]
-        cipher = cipher_suites[domain_hash % len(cipher_suites)]
-        
-        is_expired = domain_hash % 10 == 0
-        days_until_expiry = (domain_hash % 365) if not is_expired else -(domain_hash % 30)
-        
-        san_list = [domain, f'www.{domain}']
-        
-        # Create title with CN, full SAN, and expiry info
-        title_parts = [f"CN: {domain}", f"SAN: {', '.join(san_list)}"]
-        if is_expired:
-            title_parts.append(f"EXPIRED {abs(days_until_expiry)} days ago")
-        elif days_until_expiry <= 30:
-            title_parts.append(f"Expires in {days_until_expiry} days")
-        else:
-            title_parts.append(f"Expires in {days_until_expiry} days")
-        
-        title = "; ".join(title_parts)
-        
-        return {
-            'title': title,
-            'certificate': {
-                'common_name': domain,
-                'organization': 'Mock Organization',
-                'issuer_common_name': 'Mock CA',
-                'issuer_organization': 'Mock Certificate Authority',
-                'subject_alternative_names': san_list,
-                'valid_from': '2024-01-01T00:00:00',
-                'valid_until': '2025-01-01T00:00:00',
-                'is_expired': is_expired,
-                'days_until_expiry': days_until_expiry,
-                'signature_algorithm': 'sha256WithRSAEncryption',
-                'estimated_key_size': 2048,
-                'domain_match': True
-            },
-            'connection': {
-                'port': 443,
-                'protocol_version': protocol,
-                'cipher_suite': cipher,
-                'key_exchange': 'ECDHE',
-                'encryption': 'AES256-GCM',
-                'certificate_validation_bypassed': True,
-                'security_score': 85 if protocol == 'TLSv1.3' else 75,
-                'security_issues': ['Weak TLS protocol version'] if protocol == 'TLSv1.1' else []
-            },
-            'note': 'Mock TLS analysis - connection failed'
-        }

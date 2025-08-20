@@ -2,10 +2,9 @@
 URLVoid domain reputation plugin.
 
 This plugin checks domain names for malicious activity using
-URLVoid's domain reputation service with mock data for demonstration.
+URLVoid's domain reputation service.
 """
 
-import hashlib
 import requests
 from typing import Dict, Any, Optional
 from ..base import DomainReputationPlugin

@@ -7,7 +7,6 @@ targeted malicious activity.
 """
 
 import requests
-import hashlib
 from typing import Dict, Any, Optional
 from ..base import ReputationPlugin
 from ...config import config
@@ -47,7 +46,7 @@ class GreyNoisePlugin(ReputationPlugin):
             # Basic URL validation for API endpoints (less strict than target validation)
             if not url.startswith('https://'):
                 self._handle_request_error(Exception("Only HTTPS URLs are allowed"), ip_address)
-                return self._get_mock_reputation(ip_address)
+                return None
             
             headers = {
                 'User-Agent': self.user_agent,
@@ -73,10 +72,10 @@ class GreyNoisePlugin(ReputationPlugin):
             
         except requests.exceptions.RequestException as e:
             self._handle_request_error(e, ip_address)
-            return self._get_mock_reputation(ip_address)
+            return None
         except Exception as e:
             self._handle_request_error(e, ip_address)
-            return self._get_mock_reputation(ip_address)
+            return None
     
     def _parse_greynoise_response(self, data: Dict[str, Any], ip_address: str) -> Dict[str, Any]:
         """
@@ -134,44 +133,4 @@ class GreyNoisePlugin(ReputationPlugin):
             'link': link,
             'message': message,
             'source': 'GreyNoise Community API'
-        }
-    
-    def _get_mock_reputation(self, ip_address: str) -> Dict[str, Any]:
-        """
-        Provide mock reputation data when API is unavailable.
-        
-        Args:
-            ip_address: The IP address being analyzed
-            
-        Returns:
-            Mock reputation data
-        """
-        ip_hash = int(hashlib.md5(ip_address.encode()).hexdigest()[:8], 16)
-        
-        # Generate deterministic mock data
-        classifications = ['benign', 'unknown', 'malicious', 'suspicious']
-        classification = classifications[ip_hash % len(classifications)]
-        
-        is_malicious = classification in ['malicious', 'suspicious']
-        noise = ip_hash % 3 == 0
-        riot = ip_hash % 5 == 0
-        
-        threat_types = []
-        if is_malicious:
-            threat_types.append('scanning')
-        if riot:
-            threat_types.append('service-provider')
-        
-        return {
-            'is_malicious': is_malicious,
-            'threat_types': threat_types,
-            'confidence_score': 0.3 if is_malicious else 0.1,
-            'last_seen': '2024-01-01',
-            'classification': classification,
-            'noise': noise,
-            'riot': riot,
-            'service_name': 'Mock Service' if riot else '',
-            'link': '',
-            'message': 'Mock data - GreyNoise API unavailable',
-            'source': 'GreyNoise Community API (Mock)'
         }

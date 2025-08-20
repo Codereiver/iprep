@@ -249,9 +249,8 @@ class TestHTTPAnalyzerSecurity:
         
         result = self.analyzer.analyze_domain_content("example.com")
         
-        # Should fall back to mock data due to content type rejection
-        assert result is not None
-        assert 'note' in result
+        # Should return None due to content type rejection (no more mock data fallback)
+        assert result is None
     
     def test_output_sanitization(self):
         """Test that extracted content is sanitized."""

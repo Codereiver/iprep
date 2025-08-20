@@ -7,7 +7,6 @@ anti-phishing site.
 """
 
 import requests
-import hashlib
 import urllib.parse
 from typing import Dict, Any, Optional
 from ..base import DomainReputationPlugin
@@ -68,7 +67,7 @@ class PhishTankPlugin(DomainReputationPlugin):
                 
         except Exception as e:
             self._handle_request_error(e, domain)
-            return self._get_mock_reputation(domain)
+            return None
     
     def _check_url_with_phishtank(self, url: str, domain: str) -> Optional[Dict[str, Any]]:
         """
@@ -206,39 +205,3 @@ class PhishTankPlugin(DomainReputationPlugin):
             'source': 'PhishTank Community'
         }
     
-    def _get_mock_reputation(self, domain: str) -> Dict[str, Any]:
-        """
-        Provide mock reputation data when API is unavailable.
-        
-        Args:
-            domain: The domain being analyzed
-            
-        Returns:
-            Mock reputation data
-        """
-        domain_hash = int(hashlib.md5(domain.encode()).hexdigest()[:8], 16)
-        
-        # Generate deterministic mock data
-        in_database = domain_hash % 10 == 0  # 10% chance
-        is_phish = domain_hash % 20 == 0      # 5% chance
-        verified = domain_hash % 2 == 0 if is_phish else False
-        
-        is_malicious = in_database and is_phish and verified
-        threat_types = ['phishing'] if is_malicious else []
-        confidence_score = 0.9 if is_malicious else 0.1
-        
-        return {
-            'is_malicious': is_malicious,
-            'threat_types': threat_types,
-            'confidence_score': confidence_score,
-            'categories': ['phishing'] if is_malicious else [],
-            'last_seen': '2024-01-01' if in_database else '',
-            'in_database': in_database,
-            'verified': verified,
-            'phish_id': domain_hash % 10000 if in_database else 0,
-            'submission_time': '2024-01-01T12:00:00Z' if in_database else '',
-            'verification_time': '2024-01-01T12:30:00Z' if verified else '',
-            'detail_page': f'https://phishtank.org/phish_detail.php?phish_id={domain_hash % 10000}' if is_phish else '',
-            'checked_url': f'https://{domain}',
-            'source': 'PhishTank Community (Mock)'
-        }

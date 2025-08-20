@@ -187,128 +187,68 @@ class TestURLVoidPlugin:
         assert self.plugin.timeout == 10
         assert self.plugin.rate_limit_delay == 1.5
     
-    def test_deterministic_analysis(self):
-        """Test that analysis is deterministic for same IP."""
+    def test_returns_none(self):
+        """Test that plugin returns None (not implemented)."""
         ip = "192.168.1.100"
         
-        result1 = self.plugin.get_reputation(ip)
-        result2 = self.plugin.get_reputation(ip)
+        result = self.plugin.get_reputation(ip)
         
-        assert result1 == result2
+        assert result is None
     
-    def test_botnet_detection(self):
-        """Test detection of botnet IPs (hash % 10 == 0)."""
+    def test_botnet_detection_not_implemented(self):
+        """Test that plugin returns None for all IPs (not implemented)."""
         test_ips = ["192.168.1.1", "10.0.0.2", "172.16.0.3"]
         
         for ip in test_ips:
             result = self.plugin.get_reputation(ip)
-            hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
-            
-            if hash_val % 10 == 0:
-                assert result['is_malicious'] is True
-                assert 'botnet' in result['threat_types']
-                assert result['confidence_score'] == 0.85
-                assert result['risk_level'] == 'high'
-            else:
-                assert 'botnet' not in result.get('threat_types', [])
+            assert result is None
     
-    def test_malware_detection(self):
-        """Test detection of malware IPs (hash % 7 == 0)."""
+    def test_malware_detection_not_implemented(self):
+        """Test that plugin returns None for all IPs (not implemented)."""
         test_ips = ["8.8.8.8", "1.1.1.1", "9.9.9.9"]
         
         for ip in test_ips:
             result = self.plugin.get_reputation(ip)
-            hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
-            
-            if hash_val % 7 == 0 and hash_val % 10 != 0:
-                assert result['is_malicious'] is True
-                assert 'malware' in result['threat_types']
-                assert result['confidence_score'] == 0.75
-                assert result['risk_level'] == 'medium'
+            assert result is None
     
-    def test_suspicious_activity_detection(self):
-        """Test detection of suspicious activity (hash % 5 == 0)."""
+    def test_suspicious_activity_detection_not_implemented(self):
+        """Test that plugin returns None for all IPs (not implemented)."""
         test_ips = ["203.0.113.5", "198.51.100.10"]
         
         for ip in test_ips:
             result = self.plugin.get_reputation(ip)
-            hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
-            
-            if hash_val % 5 == 0 and hash_val % 7 != 0 and hash_val % 10 != 0:
-                assert 'suspicious_activity' in result['threat_types']
-                assert result['confidence_score'] == 0.45
-                assert result['risk_level'] == 'low'
+            assert result is None
     
-    def test_scanning_detection(self):
-        """Test detection of scanning activity (hash % 3 == 0)."""
+    def test_scanning_detection_not_implemented(self):
+        """Test that plugin returns None for all IPs (not implemented)."""
         test_ips = ["10.1.1.3", "172.31.255.6"]
         
         for ip in test_ips:
             result = self.plugin.get_reputation(ip)
-            hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
-            
-            if (hash_val % 3 == 0 and hash_val % 5 != 0 and 
-                hash_val % 7 != 0 and hash_val % 10 != 0):
-                assert 'scanning' in result['threat_types']
-                assert result['confidence_score'] == 0.30
-                assert result['risk_level'] == 'low'
+            assert result is None
     
-    def test_clean_ip(self):
-        """Test analysis of clean IP (no threat indicators)."""
+    def test_clean_ip_not_implemented(self):
+        """Test that plugin returns None for all IPs (not implemented)."""
         ip = "127.0.0.1"
         result = self.plugin.get_reputation(ip)
-        hash_val = int(__import__('hashlib').md5(ip.encode()).hexdigest()[:8], 16)
-        
-        if (hash_val % 3 != 0 and hash_val % 5 != 0 and 
-            hash_val % 7 != 0 and hash_val % 10 != 0):
-            assert result['is_malicious'] is False
-            assert result['threat_types'] == []
-            assert result['confidence_score'] == 0.1
-            assert result['risk_level'] == 'minimal'
+        assert result is None
     
-    def test_engines_calculation(self):
-        """Test engines total and detection calculation."""
+    def test_engines_calculation_not_implemented(self):
+        """Test that plugin returns None (not implemented)."""
         ip = "192.0.2.1"
         result = self.plugin.get_reputation(ip)
-        
-        assert 'engines_total' in result
-        assert 'engines_detected' in result
-        assert 'detection_ratio' in result
-        assert result['engines_total'] >= 5
-        assert result['engines_total'] <= 19
-        assert result['engines_detected'] >= 0
-        assert result['engines_detected'] <= result['engines_total']
-        assert "/" in result['detection_ratio']
+        assert result is None
     
-    def test_risk_level_calculation(self):
-        """Test risk level calculation logic."""
-        test_cases = [
-            (0.9, 'high'),
-            (0.8, 'high'),
-            (0.7, 'medium'),
-            (0.5, 'medium'),
-            (0.4, 'low'),
-            (0.3, 'low'),
-            (0.2, 'minimal'),
-            (0.1, 'minimal')
-        ]
-        
-        for confidence, expected_risk in test_cases:
-            risk = self.plugin._calculate_risk_level(confidence)
-            assert risk == expected_risk
+    def test_risk_level_calculation_not_implemented(self):
+        """Test that plugin no longer implements risk level calculation (not implemented)."""
+        # Plugin is not implemented, no risk level calculation exists
+        result = self.plugin.get_reputation("1.2.3.4")
+        assert result is None
     
-    def test_metadata_fields(self):
-        """Test presence of required metadata fields."""
+    def test_metadata_fields_not_implemented(self):
+        """Test that plugin returns None (not implemented)."""
         result = self.plugin.get_reputation("203.0.113.100")
-        
-        required_fields = [
-            'is_malicious', 'confidence_score', 'threat_types',
-            'engines_total', 'engines_detected', 'detection_ratio',
-            'risk_level', 'last_analysis', 'note'
-        ]
-        
-        for field in required_fields:
-            assert field in result, f"Missing required field: {field}"
+        assert result is None
     
     def test_rate_limiting(self):
         """Test that rate limiting is enforced."""
@@ -317,21 +257,14 @@ class TestURLVoidPlugin:
             mock_rate_limit.assert_called_once()
     
     def test_error_handling(self):
-        """Test error handling in analysis."""
-        with patch.object(self.plugin, '_analyze_ip_reputation', side_effect=Exception("Test error")):
-            with patch.object(self.plugin, '_handle_request_error') as mock_handle_error:
-                result = self.plugin.get_reputation("1.1.1.1")
-                
-                assert result is None
-                mock_handle_error.assert_called_once()
+        """Test error handling in plugin."""
+        # Plugin already returns None by default, test that no exceptions are raised
+        result = self.plugin.get_reputation("1.1.1.1")
+        assert result is None
     
     def test_check_ip_integration(self):
         """Test check_ip method integration."""
         result = self.plugin.check_ip("198.51.100.200")
         
-        assert result is not None
-        assert result['source'] == 'URLVoid'
-        assert result['ip_address'] == '198.51.100.200'
-        assert 'reputation' in result
-        assert 'confidence_score' in result['reputation']
-        assert 'threat_types' in result['reputation']
+        # Plugin returns None instead of a result structure
+        assert result is None

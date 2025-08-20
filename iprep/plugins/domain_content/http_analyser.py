@@ -6,7 +6,6 @@ characteristics of domain names and websites.
 """
 
 import requests
-import hashlib
 import re
 from typing import Dict, Any, Optional, List
 from urllib.parse import urljoin, urlparse
@@ -59,7 +58,7 @@ class HTTPAnalyserPlugin(DomainContentPlugin):
                     continue
             
             if not results:
-                return self._get_mock_content_analysis(domain)
+                return None
             
             # Analyze the successful response
             scheme, response_data = next(iter(results.items()))
@@ -67,7 +66,7 @@ class HTTPAnalyserPlugin(DomainContentPlugin):
             
         except Exception as e:
             self._handle_request_error(e, domain)
-            return self._get_mock_content_analysis(domain)
+            return None
     
     def _fetch_url(self, url: str, domain: str) -> Optional[Dict[str, Any]]:
         """
@@ -301,49 +300,3 @@ class HTTPAnalyserPlugin(DomainContentPlugin):
         # Default to English if no detection
         return 'en'
     
-    def _get_mock_content_analysis(self, domain: str) -> Dict[str, Any]:
-        """
-        Provide mock content analysis when HTTP requests fail.
-        
-        Args:
-            domain: The domain name
-            
-        Returns:
-            Mock content analysis data
-        """
-        domain_hash = int(hashlib.md5(domain.encode()).hexdigest()[:8], 16)
-        
-        # Generate deterministic mock data
-        mock_titles = [
-            f"Welcome to {domain}",
-            f"{domain.split('.')[0].title()} - Home",
-            f"Official {domain} Website",
-            f"{domain} | Professional Services"
-        ]
-        
-        mock_technologies = [
-            ['nginx', 'php', 'mysql'],
-            ['apache', 'wordpress', 'jquery'],
-            ['cloudflare', 'react', 'bootstrap'],
-            ['nginx', 'nodejs', 'vue']
-        ]
-        
-        title_idx = domain_hash % len(mock_titles)
-        tech_idx = domain_hash % len(mock_technologies)
-        
-        return {
-            'status_code': 200,
-            'title': mock_titles[title_idx],
-            'description': f'Official website for {domain} providing quality services and solutions.',
-            'technologies': mock_technologies[tech_idx],
-            'ssl_certificate': {'enabled': domain_hash % 2 == 0, 'hsts_enabled': domain_hash % 3 == 0},
-            'content_categories': ['business'],
-            'language': 'en',
-            'redirects': [],
-            'external_links': domain_hash % 10,
-            'suspicious_content': domain_hash % 20 == 0,
-            'scheme_used': 'https' if domain_hash % 2 == 0 else 'http',
-            'content_length': 5000 + (domain_hash % 10000),
-            'server': 'nginx/1.18.0' if domain_hash % 2 == 0 else 'Apache/2.4.41',
-            'note': 'Mock content analysis - HTTP request failed'
-        }

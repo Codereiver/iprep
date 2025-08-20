@@ -2,10 +2,9 @@
 VirusTotal domain reputation plugin.
 
 This plugin checks domain names against VirusTotal's database
-for malicious activity reports. Uses mock data for demonstration.
+for malicious activity reports.
 """
 
-import hashlib
 import requests
 from typing import Dict, Any, Optional, List
 from ..base import DomainReputationPlugin

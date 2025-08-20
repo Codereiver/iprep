@@ -325,9 +325,12 @@ class TestRealPluginIntegration:
         
         assert result is not None
         assert 'ip_address' in result
-        assert 'reputation' in result
         assert 'sources' in result
-        assert len(result['sources']) == 2
+        # Both plugins now return errors or None without API keys
+        # AbuseIPDB returns error without API key, URLVoid returns None
+        # Only AbuseIPDB will be in sources since it returns an error result
+        assert len(result['sources']) == 1
+        assert result['sources'] == ['AbuseIPDB']
     
     @patch('iprep.agent.IPRepAgent._load_plugins')
     def test_plugin_error_resilience(self, mock_load_plugins):

@@ -3,6 +3,7 @@ Unit tests for domain reputation and content plugins.
 """
 
 import pytest
+import socket
 from unittest.mock import patch, MagicMock
 from iprep.plugins.domain_reputation.urlvoid import URLVoidDomainPlugin
 from iprep.plugins.domain_reputation.virustotal import VirusTotalDomainPlugin
@@ -149,25 +150,22 @@ class TestHTTPAnalyserPlugin:
         assert result['scheme_used'] == 'https'
     
     @patch('requests.get')
-    def test_http_error_fallback_to_mock(self, mock_get):
-        """Test fallback to mock data when HTTP request fails."""
+    def test_http_error_returns_none(self, mock_get):
+        """Test that HTTP request failures return None instead of mock data."""
         mock_get.side_effect = Exception("Connection failed")
         
         plugin = HTTPAnalyserPlugin()
         result = plugin.analyze_domain_content("example.com")
         
-        assert result is not None
-        assert 'note' in result
-        assert result['note'] == 'Mock content analysis - HTTP request failed'
+        # Plugin now returns None on error instead of mock data
+        assert result is None
     
-    def test_mock_content_analysis_deterministic(self):
-        """Test that mock content analysis is deterministic."""
+    def test_no_mock_content_analysis(self):
+        """Test that mock content analysis method was removed."""
         plugin = HTTPAnalyserPlugin()
         
-        result1 = plugin._get_mock_content_analysis("example.com")
-        result2 = plugin._get_mock_content_analysis("example.com")
-        
-        assert result1 == result2
+        # Verify the mock method no longer exists
+        assert not hasattr(plugin, '_get_mock_content_analysis')
     
     def test_detect_technologies(self):
         """Test technology detection from content and headers."""
@@ -236,17 +234,16 @@ class TestDNSAnalyserPlugin:
     @patch('socket.getaddrinfo')
     def test_successful_dns_analysis(self, mock_getaddrinfo):
         """Test successful DNS analysis."""
-        # Mock DNS responses
-        mock_getaddrinfo.side_effect = [
-            # A records for main domain
-            [('', '', '', '', ('192.0.2.1', 0))],
-            # AAAA records (IPv6)
-            [('', '', '', '', ('2001:db8::1', 0))],
-            # MX records check
-            [('', '', '', '', ('192.0.2.2', 0))],
-            # CNAME/www check
-            [('', '', '', '', ('192.0.2.1', 0))]
-        ]
+        # Mock DNS responses - need to be more comprehensive for all lookups
+        def mock_getaddrinfo_side_effect(domain, port, family=None, type=None, proto=None, flags=None):
+            if family == socket.AF_INET:  # A records
+                return [('', '', '', '', ('192.0.2.1', 0))]
+            elif family == socket.AF_INET6:  # AAAA records
+                return [('', '', '', '', ('2001:db8::1', 0, 0, 0))]
+            else:  # General lookup
+                return [('', '', '', '', ('192.0.2.1', 0))]
+        
+        mock_getaddrinfo.side_effect = mock_getaddrinfo_side_effect
         
         plugin = DNSAnalyserPlugin()
         result = plugin.analyze_domain_content("example.com")
@@ -258,16 +255,15 @@ class TestDNSAnalyserPlugin:
         assert result['dns_records']['AAAA'] == ['2001:db8::1']
     
     @patch('socket.getaddrinfo')
-    def test_dns_error_fallback_to_mock(self, mock_getaddrinfo):
-        """Test fallback to mock data when DNS queries fail."""
+    def test_dns_error_returns_none(self, mock_getaddrinfo):
+        """Test that DNS query failures return None instead of mock data."""
         mock_getaddrinfo.side_effect = Exception("DNS resolution failed")
         
         plugin = DNSAnalyserPlugin()
         result = plugin.analyze_domain_content("example.com")
         
-        assert result is not None
-        assert 'note' in result
-        assert result['note'] == 'Mock DNS analysis - DNS queries failed'
+        # Plugin now returns None on error instead of mock data
+        assert result is None
     
     def test_infrastructure_analysis(self):
         """Test DNS infrastructure analysis."""
@@ -338,11 +334,9 @@ class TestDNSAnalyserPlugin:
         provider = plugin._identify_hosting_provider(unknown_records)
         assert provider == 'unknown'
     
-    def test_mock_dns_analysis_deterministic(self):
-        """Test that mock DNS analysis is deterministic."""
+    def test_no_mock_dns_analysis(self):
+        """Test that mock DNS analysis method was removed."""
         plugin = DNSAnalyserPlugin()
         
-        result1 = plugin._get_mock_dns_analysis("example.com")
-        result2 = plugin._get_mock_dns_analysis("example.com")
-        
-        assert result1 == result2
+        # Verify the mock method no longer exists
+        assert not hasattr(plugin, '_get_mock_dns_analysis')

@@ -83,18 +83,13 @@ class TestGreyNoisePlugin(unittest.TestCase):
         
         result = self.plugin.get_reputation('1.2.3.4')
         
-        self.assertIsNotNone(result)
-        self.assertIn('Mock', result['source'])
+        # Plugin now returns None on error instead of mock data
+        self.assertIsNone(result)
     
-    def test_mock_reputation(self):
-        """Test mock reputation data generation."""
-        result = self.plugin._get_mock_reputation('1.2.3.4')
-        
-        self.assertIsNotNone(result)
-        self.assertIn('is_malicious', result)
-        self.assertIn('threat_types', result)
-        self.assertIn('confidence_score', result)
-        self.assertIn('Mock', result['source'])
+    def test_no_mock_reputation(self):
+        """Test that mock reputation generation method was removed."""
+        # Verify the mock method no longer exists
+        self.assertFalse(hasattr(self.plugin, '_get_mock_reputation'))
 
 
 class TestPhishTankPlugin(unittest.TestCase):
@@ -218,14 +213,10 @@ class TestTLSAnalyserPlugin(unittest.TestCase):
         # Test no match
         self.assertFalse(self.plugin._domain_matches('different.com', 'example.com'))
     
-    def test_mock_analysis(self):
-        """Test mock TLS analysis generation."""
-        result = self.plugin._get_mock_tls_analysis('example.com')
-        
-        self.assertIsNotNone(result)
-        self.assertIn('certificate', result)
-        self.assertIn('connection', result)
-        self.assertIn('Mock', result.get('note', ''))
+    def test_no_mock_analysis(self):
+        """Test that mock TLS analysis generation method was removed."""
+        # Verify the mock method no longer exists
+        self.assertFalse(hasattr(self.plugin, '_get_mock_tls_analysis'))
 
 
 class TestWHOISAnalyserPlugin(unittest.TestCase):
@@ -273,15 +264,10 @@ class TestWHOISAnalyserPlugin(unittest.TestCase):
         self.assertIn('EXAMPLE.COM', result)
         self.assertIn('Test Registrar', result)
     
-    def test_mock_analysis(self):
-        """Test mock WHOIS analysis generation."""
-        result = self.plugin._get_mock_whois_analysis('example.com')
-        
-        self.assertIsNotNone(result)
-        self.assertIn('domain_info', result)
-        self.assertIn('security_analysis', result)
-        self.assertIn('age_analysis', result)
-        self.assertEqual(result['domain_info']['domain_name'], 'example.com')
+    def test_no_mock_analysis(self):
+        """Test that mock WHOIS analysis generation method was removed."""
+        # Verify the mock method no longer exists
+        self.assertFalse(hasattr(self.plugin, '_get_mock_whois_analysis'))
 
 
 if __name__ == '__main__':

@@ -6,7 +6,6 @@ information for domain names.
 """
 
 import socket
-import hashlib
 from typing import Dict, Any, Optional, List
 from ..base import DomainContentPlugin, PluginTrafficType
 
@@ -80,7 +79,7 @@ class DNSAnalyserPlugin(DomainContentPlugin):
             
         except Exception as e:
             self._handle_request_error(e, domain)
-            return self._get_mock_dns_analysis(domain)
+            return None
     
     def _get_dns_records(self, domain: str) -> Dict[str, List[str]]:
         """
@@ -200,10 +199,7 @@ class DNSAnalyserPlugin(DomainContentPlugin):
         """
         # This is a very simplified approach
         # Real implementation would query WHOIS data
-        domain_hash = int(hashlib.md5(domain.encode()).hexdigest()[:8], 16)
-        
-        age_categories = ['new', 'moderate', 'established', 'veteran']
-        return age_categories[domain_hash % len(age_categories)]
+        return 'unknown'
     
     def _detect_common_subdomains(self, domain: str) -> List[str]:
         """
@@ -307,74 +303,3 @@ class DNSAnalyserPlugin(DomainContentPlugin):
         else:
             return 'unknown'
     
-    def _get_mock_dns_analysis(self, domain: str) -> Dict[str, Any]:
-        """
-        Provide mock DNS analysis when DNS queries fail.
-        
-        Args:
-            domain: The domain name
-            
-        Returns:
-            Mock DNS analysis data
-        """
-        domain_hash = int(hashlib.md5(domain.encode()).hexdigest()[:8], 16)
-        
-        # Generate deterministic mock data
-        mock_ips = [
-            '192.0.2.1',
-            '198.51.100.1',
-            '203.0.113.1'
-        ]
-        
-        ip_count = (domain_hash % 3) + 1
-        selected_ips = mock_ips[:ip_count]
-        
-        # Create mock title
-        title_parts = [f"A: {selected_ips[0]}"]
-        if ip_count > 1:
-            title_parts[0] += f" (+{ip_count-1} more)"
-        
-        if domain_hash % 2 == 0:
-            title_parts.append("AAAA: 2001:db8::1")
-        
-        if domain_hash % 3 == 0:
-            title_parts.append("MX: 1 record")
-        
-        hosting_provider = ['unknown', 'cloudflare', 'aws', 'github-pages'][domain_hash % 4]
-        if hosting_provider != 'unknown':
-            title_parts.append(f"Host: {hosting_provider}")
-        
-        mock_title = "; ".join(title_parts)
-        
-        return {
-            'title': mock_title,
-            'dns_records': {
-                'A': selected_ips,
-                'AAAA': ['2001:db8::1'] if domain_hash % 2 == 0 else [],
-                'MX': ['10 mail.example.com'] if domain_hash % 3 == 0 else [],
-                'CNAME': ['www'] if domain_hash % 4 == 0 else []
-            },
-            'infrastructure_analysis': {
-                'ip_count': ip_count,
-                'ipv6_enabled': domain_hash % 2 == 0,
-                'multiple_a_records': ip_count > 1,
-                'has_mail_records': domain_hash % 3 == 0,
-                'has_www_subdomain': domain_hash % 4 == 0,
-                'load_balancing': ip_count > 2
-            },
-            'domain_age_estimate': ['new', 'moderate', 'established'][domain_hash % 3],
-            'subdomains_detected': ['www', 'mail'][:domain_hash % 3],
-            'mail_security': {
-                'has_mx_records': domain_hash % 3 == 0,
-                'spf_detected': domain_hash % 5 == 0,
-                'dmarc_detected': domain_hash % 7 == 0,
-                'dkim_detected': domain_hash % 6 == 0
-            },
-            'cdn_usage': {
-                'cdn_detected': domain_hash % 4 == 0,
-                'cdn_providers': ['cloudflare'] if domain_hash % 4 == 0 else [],
-                'multiple_providers': False
-            },
-            'hosting_provider': hosting_provider,
-            'note': 'Mock DNS analysis - DNS queries failed'
-        }

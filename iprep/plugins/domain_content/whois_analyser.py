@@ -7,7 +7,6 @@ to gather domain registration information, nameservers, and administrative detai
 
 import socket
 import re
-import hashlib
 import datetime
 from typing import Dict, Any, Optional, List
 from ..base import DomainContentPlugin, PluginTrafficType
@@ -62,7 +61,7 @@ class WHOISAnalyserPlugin(DomainContentPlugin):
             # Get WHOIS data
             whois_data = self._get_whois_data(domain)
             if not whois_data:
-                return self._get_mock_whois_analysis(domain)
+                return None
             
             # Parse WHOIS response
             parsed_data = self._parse_whois_data(whois_data, domain)
@@ -74,7 +73,7 @@ class WHOISAnalyserPlugin(DomainContentPlugin):
             
         except Exception as e:
             self._handle_request_error(e, domain)
-            return self._get_mock_whois_analysis(domain)
+            return None
     
     def _get_whois_data(self, domain: str) -> Optional[str]:
         """
@@ -436,80 +435,3 @@ class WHOISAnalyserPlugin(DomainContentPlugin):
         
         return ns_analysis
     
-    def _get_mock_whois_analysis(self, domain: str) -> Dict[str, Any]:
-        """
-        Provide mock WHOIS analysis when query fails.
-        
-        Args:
-            domain: The domain being analysed
-            
-        Returns:
-            Mock WHOIS analysis data
-        """
-        domain_hash = int(hashlib.md5(domain.encode()).hexdigest()[:8], 16)
-        
-        # Generate deterministic mock data
-        registrars = ['GoDaddy', 'Namecheap', 'Google Domains', 'Cloudflare']
-        registrar = registrars[domain_hash % len(registrars)]
-        
-        is_new = domain_hash % 10 == 0
-        has_privacy = domain_hash % 3 == 0
-        
-        mock_nameservers = [
-            f'ns1.{domain}',
-            f'ns2.{domain}'
-        ]
-        
-        # Mock contact information
-        registrant_org = 'Privacy Protected' if has_privacy else 'Example Organization'
-        admin_contact = 'Privacy Protected' if has_privacy else 'admin@example.com'
-        tech_contact = 'Privacy Protected' if has_privacy else 'tech@example.com'
-        
-        # Create mock title
-        title_parts = [f"Registrar: {registrar}"]
-        if not has_privacy:
-            title_parts.append(f"Org: {registrant_org}")
-            title_parts.append(f"Admin: {admin_contact}")
-            title_parts.append(f"Tech: {tech_contact}")
-        else:
-            title_parts.append("Org: Privacy Protected")
-        
-        title_parts.append(f"Created: {'2024-01-01' if is_new else '2020-01-01'}")
-        mock_title = "; ".join(title_parts)
-        
-        return {
-            'title': mock_title,
-            'domain_info': {
-                'domain_name': domain,
-                'registrar': registrar,
-                'creation_date': '2024-01-01' if is_new else '2020-01-01',
-                'expiration_date': '2025-01-01',
-                'updated_date': '2024-06-01',
-                'registrant_organization': registrant_org,
-                'admin_contact': admin_contact,
-                'tech_contact': tech_contact,
-                'name_servers': mock_nameservers,
-                'domain_status': ['clientTransferProhibited'],
-                'dnssec_enabled': domain_hash % 4 == 0
-            },
-            'security_analysis': {
-                'has_privacy_protection': has_privacy,
-                'is_recently_registered': is_new,
-                'security_issues': ['Recently registered domain'] if is_new else [],
-                'risk_score': 20 if is_new else 5,
-                'dnssec_enabled': domain_hash % 4 == 0
-            },
-            'age_analysis': {
-                'age_category': 'new' if is_new else 'established',
-                'creation_date': '2024-01-01' if is_new else '2020-01-01',
-                'expiration_date': '2025-01-01',
-                'days_until_expiry': 365
-            },
-            'nameserver_analysis': {
-                'count': 2,
-                'providers': ['cloudflare'] if domain_hash % 2 == 0 else [],
-                'uses_cloud_dns': domain_hash % 2 == 0,
-                'geographic_distribution': 'global'
-            },
-            'note': 'Mock WHOIS analysis - query failed'
-        }
